@@ -1,0 +1,23 @@
+{
+  "name": "mongodb-network-log-sink",
+  "config": {
+    "connector.class": "com.mongodb.kafka.connect.MongoSinkConnector",
+    "tasks.max": "1",
+    "topics": "log-topic",
+    "connection.uri": "mongodb://mongoadmin:password@mongodb:27017/network_logs_db",
+    "database": "network_logs_db",
+    "collection": "network_logs",
+    "delete.enabled": "false",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    "auto.create.topics.enable": "true",
+    "auto.create.collections.enable": "true",
+
+    "transforms": "TimestampConverter",
+    "transforms.TimestampConverter.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+    "transforms.TimestampConverter.field": "timestamp",
+    "transforms.TimestampConverter.format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "transforms.TimestampConverter.target.type": "Timestamp"
+  }
+}
