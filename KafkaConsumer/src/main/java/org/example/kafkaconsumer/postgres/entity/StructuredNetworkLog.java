@@ -12,7 +12,7 @@ public class StructuredNetworkLog {
     @Id
     private Long id; // PostgreSQL auto-generated BIGSERIAL primary key
 
-    @Column("log_id") // Your application's unique ID for the log in PostgreSQL
+    @Column("log_id") // application's unique ID for the log in PostgreSQL
     private String logId; // UUID generated when processing from raw log
 
     @Column("timestamp")
@@ -47,7 +47,6 @@ public class StructuredNetworkLog {
     }
 
     // --- Getters and Setters (REQUIRED for Spring Data JPA/R2DBC) ---
-    // (You can use Lombok's @Data, @NoArgsConstructor, @AllArgsConstructor if you prefer)
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getLogId() { return logId; }

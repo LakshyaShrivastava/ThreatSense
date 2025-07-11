@@ -34,7 +34,7 @@ public class LogProcessorService {
 
         System.out.println("Processing new raw logs from MongoDB (since " + fetchFrom + ")");
 
-        rawLogRepository.findAll() // Fetch logs newer than last processed timestamp
+        rawLogRepository.findByTimestampGreaterThan(fetchFrom) // Fetch logs newer than last processed timestamp
                 .doOnSubscribe(subscription -> System.out.println("DEBUG: Stream subscribed."))
                 .doOnError(e -> System.err.println("DEBUG: An error occurred in the stream: " + e.getMessage()))
                 .doOnNext(rawLog -> System.out.println("DEBUG: Fetched rawNetworkLog from MongoDB: " + rawLog))
@@ -46,8 +46,8 @@ public class LogProcessorService {
                             rawLog.getProtocol(),
                             rawLog.getBytes(),
                             rawLog.getTimestamp(),
-                            "Message placeholder (raw.message removed for debug)",
-                            "Raw log placeholder (raw.rawLog removed for debug)"
+                            rawLog.getMessage(),
+                            rawLog.getRawLog()
                     );
 
                     // Save the structured log to PostgreSQL
@@ -57,11 +57,10 @@ public class LogProcessorService {
                 })
                 .doOnComplete(() -> {
                     // Update the last processed timestamp only if processing was complete
-                    // lastProcessedTimestamp.set(currentTimestamp);
-                    // System.out.println("Finished processing raw logs up to: " + currentTimestamp);
+                    lastProcessedTimestamp.set(currentTimestamp);
+                    System.out.println("Finished processing raw logs up to: " + currentTimestamp);
                     System.out.println("DEBUG: Stream completed.");
                 })
-                // .doOnError(e -> System.err.println("Error processing raw logs from MongoDB: " + e.getMessage()))
                 .subscribe(); // Subscribe to trigger the reactive flow
     }
 }

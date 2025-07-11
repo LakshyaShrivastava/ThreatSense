@@ -18,13 +18,17 @@ import java.util.Random;
 public class Producer {
 
     private static final String TOPIC_NAME = "log-topic";
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092"; // Your Kafka broker address
+    private static final String BOOTSTRAP_SERVERS = "localhost:9092"; // Kafka broker address
+
+    private static final int NUM_SIMULATED_USERS = 5;
 
     private final Random random = new Random();
-    private final ObjectMapper objectMapper; // Jackson ObjectMapper for JSON
+    private final ObjectMapper objectMapper; // ObjectMapper is thread-safe after configuration
     private int logSequence = 0;
 
     private final String[] PROTOCOLS = {"TCP", "UDP", "ICMP", "HTTP", "HTTPS"};
+    private final String[] MESSAGES = {"Connection attempt", "Authentication failed",
+            "Connection successful", "Authentication successful", "Download Started"};
 
     public Producer() {
         // Configure ObjectMapper for Instant and pretty printing

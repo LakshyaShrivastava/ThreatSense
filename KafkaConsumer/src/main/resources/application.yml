@@ -1,5 +1,5 @@
 spring:
-  # General application name for Spring Boot Actuator, logging, etc.
+
   application:
     name: consumer
 
@@ -8,21 +8,19 @@ spring:
   data:
     mongodb:
       # Connection URI for MongoDB.
-      # 'localhost:27017' maps to your Dockerized MongoDB container.
+      # 'localhost:27017' maps to Dockerized MongoDB container.
       # 'network_logs_db' is the database name where raw logs are dumped by Kafka Connect.
       uri: mongodb://mongoadmin:password@localhost:27017/network_logs_db
 
   # PostgreSQL R2DBC Connection Configuration
-  # This tells Spring Data R2DBC how to connect to your PostgreSQL instance
+  # This tells Spring Data R2DBC how to connect to the PostgreSQL instance
   r2dbc:
     # R2DBC connection URL.
-    # 'localhost:5432' maps to your Dockerized PostgreSQL container.
-    # 'logs_db' is the database name you created in PostgreSQL.
+    # 'localhost:5432' maps to Dockerized PostgreSQL container.
     url: r2dbc:postgresql://localhost:5432/logs_db
-    username: loguser # Matches POSTGRES_USER in your docker-compose-postgres.yml
-    password: logpassword # Matches POSTGRES_PASSWORD in your docker-compose-postgres.yml
+    username: loguser
+    password: logpassword
 
-  # Optional: Configure logging levels for detailed debugging (useful initially)
 logging:
   level:
     # Log Spring Data MongoDB repository operations (e.g., find, save)

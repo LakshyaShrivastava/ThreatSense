@@ -29,21 +29,19 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
   mongodb:
-    image: mongo:6.0 # Or 7.0
+    image: mongo:6.0 
     hostname: mongodb
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongoadmin # <--- IMPORTANT: Use a NEW, TEMPORARY ROOT USERNAME
-      MONGO_INITDB_ROOT_PASSWORD: password 
-      MONGO_INITDB_DATABASE: network_logs_db # Specify the database where the user will be created
-      # MONGO_INITDB_USERNAME: mongoadmin # The username to create
-      # MONGO_INITDB_PASSWORD: password # The password for that user
+    environment:	
+      MONGO_INITDB_ROOT_USERNAME: rootadmin 
+      MONGO_INITDB_ROOT_PASSWORD: rootpwd 
+      
     volumes:
       - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
     restart: unless-stopped
 
-  # NEW: Add the PostgreSQL service here, aligned with other services
   postgresdb: # The service name for our PostgreSQL container
     image: postgres:16 # Using a recent stable PostgreSQL version
     hostname: postgresdb # Hostname within the Docker network
@@ -85,8 +83,6 @@ services:
       CONNECT_PLUGIN_PATH: '/usr/share/confluent-hub-components'
       CONNECT_REST_ADVERTISED_HOST_NAME: 'localhost'
       CONNECT_AUTO_CREATE_TOPICS_ENABLE: 'true'
-
-      # NEW: Explicitly set replication factor for Connect's internal topics to 1
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: '1' # For connect-configs topic
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: '1' # For connect-offsets topic
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: '1' # For connect-status topic
@@ -109,4 +105,4 @@ services:
 volumes:
   mongodb_data: # Volume for MongoDB data persistence
   connect_data: # Volume for Kafka Connect data persistence
-  postgres_data: # NEW: Volume for PostgreSQL data persistence
+  postgres_data: # Volume for PostgreSQL data persistence

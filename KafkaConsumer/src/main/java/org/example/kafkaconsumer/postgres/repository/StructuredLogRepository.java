@@ -8,6 +8,5 @@ import reactor.core.publisher.Flux;
 @Repository
 public interface StructuredLogRepository extends ReactiveCrudRepository<StructuredNetworkLog, Long> {
     // Spring Data R2DBC automatically provides methods like save(), findById(), findAll(), delete()
-    // You can add custom reactive query methods here if needed
     Flux<StructuredNetworkLog> findBySrcIP(String srcIP);
 }
