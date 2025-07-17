@@ -28,3 +28,4 @@ logging:
     # Log R2DBC (PostgreSQL) queries and client activity
     io.r2dbc.postgresql.query: DEBUG
     io.r2dbc.postgresql.client: DEBUG
+    org.springframework.data.r2dbc: DEBUG

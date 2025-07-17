@@ -1,13 +1,11 @@
 package org.example.kafkaconsumer.service; // New package (or adjust to existing service package)
 
-import org.example.kafkaconsumer.model.RawNetworkLog; // Raw log from MongoDB
 import org.example.kafkaconsumer.mongodb.repository.RawNetworkLogRepository; // MongoDB Repository
 import org.example.kafkaconsumer.postgres.entity.StructuredNetworkLog; // Structured log for PostgreSQL
 import org.example.kafkaconsumer.postgres.repository.StructuredLogRepository; // PostgreSQL Repository
 
 import org.springframework.scheduling.annotation.Scheduled; // For periodic processing
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 

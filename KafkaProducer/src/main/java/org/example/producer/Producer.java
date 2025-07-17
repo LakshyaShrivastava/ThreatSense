@@ -20,11 +20,21 @@ public class Producer {
     private static final String TOPIC_NAME = "log-topic";
     private static final String BOOTSTRAP_SERVERS = "localhost:9092"; // Kafka broker address
 
-    private static final int NUM_SIMULATED_USERS = 5;
+    // For testing Frequent Connections:
+    private static final String TEST_FREQ_SRC_IP = "192.168.1.10"; // Specific source IP for high frequency
+    private static final String TEST_FREQ_DEST_IP = "10.0.0.5";   // Specific destination IP for high frequency
+    private static final int FREQ_TEST_PROBABILITY = 3; // Send test freq log approx. 1 out of 3 times (33%)
+
 
     private final Random random = new Random();
     private final ObjectMapper objectMapper; // ObjectMapper is thread-safe after configuration
     private int logSequence = 0;
+
+    // Array of suspicious ports to inject for testing
+    private static final int[] SUSPICIOUS_PORTS_ARRAY = {21, 23, 80, 443, 3389, 22, 445};
+    private static final String[] BLACKLISTED_IPS_ARRAY = {
+            "1.2.3.4", "192.0.2.1", "10.0.0.1", "203.0.113.5", "198.51.100.10"
+    };
 
     private final String[] PROTOCOLS = {"TCP", "UDP", "ICMP", "HTTP", "HTTPS"};
     private final String[] MESSAGES = {"Connection attempt", "Authentication failed",
@@ -38,14 +48,49 @@ public class Producer {
     }
 
     private NetworkLog generateRandomNetworkLog() {
-        String srcIP = generateRandomIpAddress();
-        String destIP = generateRandomIpAddress();
-        int port = random.nextInt(65535) + 1;
+        String srcIP;
+        String destIP;
+        String message;
+        int port;
+
+        // TEMPORARY: forcing some blacklisted IPs for testing
+        if (random.nextInt(10) == 0) { // Approx 10% chance for srcIP to be blacklisted
+            srcIP = BLACKLISTED_IPS_ARRAY[random.nextInt(BLACKLISTED_IPS_ARRAY.length)];
+        } else {
+            srcIP = generateRandomIpAddress();
+        }
+
+        if (random.nextInt(10) == 0) { // Approx 10% chance for destIP to be blacklisted
+            destIP = BLACKLISTED_IPS_ARRAY[random.nextInt(BLACKLISTED_IPS_ARRAY.length)];
+        } else {
+            destIP = generateRandomIpAddress();
+        }
+        /*
+        if (random.nextInt(FREQ_TEST_PROBABILITY) == 0) { // e.g., 1 out of 3 times
+            srcIP = TEST_FREQ_SRC_IP;
+            destIP = TEST_FREQ_DEST_IP;
+            message = MESSAGES[random.nextInt(3)]; // Use specific messages for test traffic
+        }
+        else {
+            srcIP = generateRandomIpAddress();
+            destIP = generateRandomIpAddress();
+            message = MESSAGES[random.nextInt(MESSAGES.length)];
+        }
+
+         */
+        // TEMPORARY: Forcing some suspicious ports for testing (approx. 20% of logs)
+        if (random.nextInt(5) == 0) {
+            port = SUSPICIOUS_PORTS_ARRAY[random.nextInt(SUSPICIOUS_PORTS_ARRAY.length)];
+        } else {
+            port = random.nextInt(65535) + 1;
+        }
+
         String protocol = PROTOCOLS[random.nextInt(PROTOCOLS.length)];
         long bytes = random.nextInt(100000) + 1;
         Instant timestamp = Instant.now();
-
-        return new NetworkLog(srcIP, destIP, port, protocol, bytes, timestamp);
+        message = MESSAGES[random.nextInt(MESSAGES.length)];
+        String rawLog = "RAW_LOG_ENTRY: " + message + " from " + srcIP + " to " + destIP + " on " + port;
+        return new NetworkLog(srcIP, destIP, port, protocol, bytes, timestamp); // add raw_log and message here
     }
 
     private String generateRandomIpAddress() {
