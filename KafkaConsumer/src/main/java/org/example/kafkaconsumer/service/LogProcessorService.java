@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 
 @Service
@@ -20,11 +21,14 @@ public class LogProcessorService {
 
     private final ReactiveMongoTemplate mongoTemplate;
     private final StructuredLogRepository structuredLogRepository;
+    private final AlertingService alertingService;
 
     public LogProcessorService(ReactiveMongoTemplate mongoTemplate,
-                               StructuredLogRepository structuredLogRepository) {
+                               StructuredLogRepository structuredLogRepository,
+                               AlertingService alertingService) {
         this.mongoTemplate = mongoTemplate;
         this.structuredLogRepository = structuredLogRepository;
+        this.alertingService = alertingService;
     }
 
     @PostConstruct
@@ -59,7 +63,13 @@ public class LogProcessorService {
                     );
 
                     return structuredLogRepository.save(structuredLog)
-                            .doOnSuccess(saved -> System.out.println("Saved to PostgreSQL: " + saved.getLogId()));
+                            .flatMap(saved -> { // Use flatMap to chain the next reactive operation
+                                System.out.println("LogProcessorService: Saved structured log to PostgreSQL: " + saved.getLogId());
+                                // Directly call the AlertingService here, passing the logId
+                                return alertingService.analyzeAndAlert(saved.getId())
+                                        .then(Mono.just(saved)); // Pass the saved log through (or just Mono.empty() if no further chaining needed)
+                            })
+                            .doOnError(e -> System.err.println("LogProcessorService: Error saving structured log or triggering alert: " + e.getMessage()));
                 })
                 .subscribe();
     }
