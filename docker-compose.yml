@@ -1,108 +1,200 @@
 version: '3.8'
 
+
 services:
+
   zookeeper:
+
     image: confluentinc/cp-zookeeper:7.5.3
+
     hostname: zookeeper
+
     ports:
+
       - "2181:2181"
+
     environment:
+
       ZOOKEEPER_CLIENT_PORT: 2181
+
       ZOOKEEPER_TICK_TIME: 2000
 
+
   broker:
+
     image: confluentinc/cp-kafka:7.5.3
+
     hostname: broker
+
     ports:
+
       - "9092:9092"
+
       - "9093:9093"
+
     depends_on:
+
       - zookeeper
+
     environment:
+
       KAFKA_BROKER_ID: 1
+
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
+
   mongodb:
-    image: mongo:6.0 
+    image: mongo:6.0
     hostname: mongodb
     ports:
       - "27017:27017"
-    environment:	
-      MONGO_INITDB_ROOT_USERNAME: rootadmin 
-      MONGO_INITDB_ROOT_PASSWORD: rootpwd 
-      
+    command: > # Simplified command, no auth or keyfile
+      bash -c "
+        exec /usr/local/bin/docker-entrypoint.sh mongod --replSet rs0 --bind_ip 0.0.0.0 --noauth
+      "
+    environment: # Keep these for the entrypoint to run init scripts correctly
+      # MONGO_INITDB_ROOT_USERNAME: mongoadmin_root # These will still trigger init scripts
+      # MONGO_INITDB_ROOT_PASSWORD: rootpassword   # but auth won't be enforced by mongod
+      REPLICA_SET_NAME: rs0
     volumes:
       - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      # Remove - mongo_keyfile:/opt/mongo
     restart: unless-stopped
 
-  postgresdb: # The service name for our PostgreSQL container
-    image: postgres:16 # Using a recent stable PostgreSQL version
-    hostname: postgresdb # Hostname within the Docker network
-    ports:
-      - "5432:5432" # Standard PostgreSQL port: Host:Container
-    environment:
-      POSTGRES_DB: logs_db # Name of the database to be created automatically
-      POSTGRES_USER: loguser # Username for the database
-      POSTGRES_PASSWORD: logpassword # Password for the database user
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Persist data on your host machine
-    restart: unless-stopped # Always restart unless explicitly stopped
 
-  connect: # Kafka Connect service
-    image: confluentinc/cp-kafka-connect:7.5.3 # Confluent Kafka Connect image
-    hostname: connect
+  postgresdb:
+
+    image: postgres:16
+
+    hostname: postgresdb
+
     ports:
-      - "8083:8083" # Kafka Connect REST API port
-    depends_on:
-      - broker # Connect depends on Kafka broker
-      - mongodb # Connect also needs to reach MongoDB
-      - postgresdb # NEW: Connect should also depend on postgres if it needs to reach it directly later
+
+      - "5432:5432"
+
     environment:
-      # Basic Kafka Connect configuration
-      CONNECT_BOOTSTRAP_SERVERS: 'broker:29092' # How Connect talks to Kafka (using Docker network name)
+
+      POSTGRES_DB: logs_db
+
+      POSTGRES_USER: loguser
+
+      POSTGRES_PASSWORD: logpassword
+
+    volumes:
+
+      - postgres_data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+
+  connect:
+
+    image: confluentinc/cp-kafka-connect:7.5.3
+
+    hostname: connect
+
+    ports:
+
+      - "8083:8083"
+
+    depends_on:
+
+      - broker
+
+      - mongodb
+
+      - postgresdb
+
+    environment:
+
+      CONNECT_BOOTSTRAP_SERVERS: 'broker:29092'
+
       CONNECT_REST_PORT: 8083
-      CONNECT_GROUP_ID: 'connect-cluster' # Group ID for Connect workers
-      CONNECT_CONFIG_STORAGE_TOPIC: 'connect-configs' # Topics to store configs, offsets, status
+
+      CONNECT_GROUP_ID: 'connect-cluster'
+
+      CONNECT_CONFIG_STORAGE_TOPIC: 'connect-configs'
+
       CONNECT_OFFSET_STORAGE_TOPIC: 'connect-offsets'
+
       CONNECT_STATUS_STORAGE_TOPIC: 'connect-status'
-      CONNECT_KEY_CONVERTER: 'org.apache.kafka.connect.storage.StringConverter' # How keys are handled by Connect
-      CONNECT_VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter' # How values are handled (JSON)
-      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false' # Don't expect schemas in the JSON
-      CONNECT_INTERNAL_KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter' # For Connect's internal topics
+
+      CONNECT_KEY_CONVERTER: 'org.apache.kafka.connect.storage.StringConverter'
+
+      CONNECT_VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+
+      CONNECT_INTERNAL_KEY_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+
       CONNECT_INTERNAL_VALUE_CONVERTER: 'org.apache.kafka.connect.json.JsonConverter'
+
       CONNECT_INTERNAL_KEY_CONVERTER_SCHEMAS_ENABLE: 'false'
+
       CONNECT_INTERNAL_VALUE_CONVERTER_SCHEMAS_ENABLE: 'false'
+
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: '10000'
+
       CONNECT_PLUGIN_PATH: '/usr/share/confluent-hub-components'
+
       CONNECT_REST_ADVERTISED_HOST_NAME: 'localhost'
+
       CONNECT_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: '1' # For connect-configs topic
-      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: '1' # For connect-offsets topic
-      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: '1' # For connect-status topic
+
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: '1'
+
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: '1'
+
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: '1'
 
     command:
+
       - bash
+
       - -c
+
       - |
+
         echo "Waiting for Kafka broker to be ready (10 seconds delay)..."
-        sleep 10 # <--- ADD THIS LINE: Gives broker time to fully initialize group coordination
+
+        sleep 10
+
         echo "Installing MongoDB Kafka Connector..."
-        confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.16.0 || \
-        { echo "Failed to install MongoDB Kafka Connector. Exiting."; exit 1; }
+
+        confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.16.0 || {
+
+          echo "Failed to install MongoDB Kafka Connector. Exiting."; exit 1;
+
+        }
+
         echo "Starting Kafka Connect worker..."
+
         /etc/confluent/docker/run
 
     volumes:
-      - connect_data:/data # For Connect's internal data (configs, offsets, status)
+
+      - connect_data:/data
+
 
 volumes:
-  mongodb_data: # Volume for MongoDB data persistence
-  connect_data: # Volume for Kafka Connect data persistence
-  postgres_data: # Volume for PostgreSQL data persistence
+
+  mongodb_data:
+
+  connect_data:
+
+  postgres_data:
+
+  # mongo_keyfile: 

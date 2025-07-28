@@ -4,7 +4,7 @@
     "connector.class": "com.mongodb.kafka.connect.MongoSinkConnector",
     "tasks.max": "1",
     "topics": "log-topic",
-    "connection.uri": "mongodb://mongoadmin:password@mongodb:27017/network_logs_db",
+    "connection.uri": "mongodb://mongoadmin:password@mongodb:27017/network_logs_db?replicaSet=rs0",
     "database": "network_logs_db",
     "collection": "network_logs",
     "delete.enabled": "false",

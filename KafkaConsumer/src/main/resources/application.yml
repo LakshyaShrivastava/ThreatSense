@@ -12,6 +12,7 @@ spring:
       # 'network_logs_db' is the database name where raw logs are dumped by Kafka Connect.
       uri: mongodb://mongoadmin:password@localhost:27017/network_logs_db
 
+
   # PostgreSQL R2DBC Connection Configuration
   # This tells Spring Data R2DBC how to connect to the PostgreSQL instance
   r2dbc:
@@ -21,8 +22,8 @@ spring:
     username: loguser
     password: logpassword
 
-logging:
-  level:
+#logging:
+  #level:
     # Log Spring Data MongoDB repository operations (e.g., find, save)
     org.springframework.data.mongodb.core.ReactiveMongoTemplate: DEBUG
     # Log R2DBC (PostgreSQL) queries and client activity

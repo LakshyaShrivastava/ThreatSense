@@ -1,42 +1,52 @@
-package org.example.kafkaconsumer.service; // New package (or adjust to existing service package)
+package org.example.kafkaconsumer.service;
 
-import org.example.kafkaconsumer.mongodb.repository.RawNetworkLogRepository; // MongoDB Repository
-import org.example.kafkaconsumer.postgres.entity.StructuredNetworkLog; // Structured log for PostgreSQL
-import org.example.kafkaconsumer.postgres.repository.StructuredLogRepository; // PostgreSQL Repository
-
-import org.springframework.scheduling.annotation.Scheduled; // For periodic processing
+import org.example.kafkaconsumer.model.RawNetworkLog;
+import org.example.kafkaconsumer.postgres.entity.StructuredNetworkLog;
+import org.example.kafkaconsumer.postgres.repository.StructuredLogRepository;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.data.mongodb.core.ChangeStreamEvent;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.ChangeStreamOptions;
+import org.springframework.data.mongodb.core.query.CriteriaDefinition;
 import org.springframework.stereotype.Service;
-import java.time.Instant;
-import java.util.concurrent.atomic.AtomicReference;
+
+import jakarta.annotation.PostConstruct;
+import reactor.core.publisher.Flux;
+
 
 @Service
 public class LogProcessorService {
 
-    private final RawNetworkLogRepository rawLogRepository; // Repository for MongoDB
-    private final StructuredLogRepository structuredLogRepository; // Repository for PostgreSQL
+    private final ReactiveMongoTemplate mongoTemplate;
+    private final StructuredLogRepository structuredLogRepository;
 
-    // To keep track of the last processed timestamp (for fetching new logs)
-    private final AtomicReference<Instant> lastProcessedTimestamp = new AtomicReference<>(Instant.EPOCH); // Start from beginning of time
-
-    // Constructor Injection
-    public LogProcessorService(RawNetworkLogRepository rawLogRepository, StructuredLogRepository structuredLogRepository) {
-        this.rawLogRepository = rawLogRepository;
+    public LogProcessorService(ReactiveMongoTemplate mongoTemplate,
+                               StructuredLogRepository structuredLogRepository) {
+        this.mongoTemplate = mongoTemplate;
         this.structuredLogRepository = structuredLogRepository;
     }
 
-    // This method will run periodically to fetch and process new logs from MongoDB
-    @Scheduled(fixedRate = 5000) // Run every 5 seconds
-    public void processNewRawLogs() {
-        Instant currentTimestamp = Instant.now();
-        Instant fetchFrom = lastProcessedTimestamp.get(); // Get the last timestamp we processed
+    @PostConstruct
+    public void initChangeStreamListener() {
+        System.out.println("Starting MongoDB Change Stream listener...");
 
-        System.out.println("Processing new raw logs from MongoDB (since " + fetchFrom + ")");
+        // Start a change stream on the collection
+        Flux<ChangeStreamEvent<RawNetworkLog>> changeStream = mongoTemplate.changeStream(
+                "network_logs_db",              // DB name
+                "network_logs",              // Collection name (adjust to your actual name)
+                ChangeStreamOptions.builder()
+                        .returnFullDocumentOnUpdate()
+                        .build(),
+                RawNetworkLog.class
+        );
 
-        rawLogRepository.findByTimestampGreaterThan(fetchFrom) // Fetch logs newer than last processed timestamp
-                .doOnSubscribe(subscription -> System.out.println("DEBUG: Stream subscribed."))
-                .doOnError(e -> System.err.println("DEBUG: An error occurred in the stream: " + e.getMessage()))
-                .doOnNext(rawLog -> System.out.println("DEBUG: Fetched rawNetworkLog from MongoDB: " + rawLog))
-                .flatMap(rawLog -> {
+        changeStream
+                .doOnSubscribe(subscription -> System.out.println("Subscribed to change stream"))
+                .doOnError(error -> System.err.println("Error in change stream: " + error))
+                .flatMap(event -> {
+                    RawNetworkLog rawLog = event.getBody();
+
                     StructuredNetworkLog structuredLog = new StructuredNetworkLog(
                             rawLog.getSrcIP(),
                             rawLog.getDestIP(),
@@ -48,17 +58,9 @@ public class LogProcessorService {
                             rawLog.getRawLog()
                     );
 
-                    // Save the structured log to PostgreSQL
                     return structuredLogRepository.save(structuredLog)
-                            .doOnSuccess(savedStructuredLog -> System.out.println("Saved structured log to PostgreSQL: " + savedStructuredLog.getLogId()))
-                            .doOnError(e -> System.err.println("Error saving structured log to PostgreSQL: " + e.getMessage()));
+                            .doOnSuccess(saved -> System.out.println("Saved to PostgreSQL: " + saved.getLogId()));
                 })
-                .doOnComplete(() -> {
-                    // Update the last processed timestamp only if processing was complete
-                    lastProcessedTimestamp.set(currentTimestamp);
-                    System.out.println("Finished processing raw logs up to: " + currentTimestamp);
-                    System.out.println("DEBUG: Stream completed.");
-                })
-                .subscribe(); // Subscribe to trigger the reactive flow
+                .subscribe();
     }
 }
