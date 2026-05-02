@@ -60,13 +60,11 @@ This brings up Zookeeper, Kafka, MongoDB, PostgreSQL, and the Kafka Connect work
 
 ### 2. PostgreSQL schema
 
-Create tables expected by the consumer (see `db/schema.sql`). Example using `docker exec` against the bundled Postgres service (credentials match `docker-compose.yml`):
+Create tables expected by the consumer (see `db/schema.sql`). From the repo root, with Compose services already running:
 
 ```bash
-docker exec -i postgresdb psql -U loguser -d logs_db < db/schema.sql
+docker compose exec -T postgresdb psql -U loguser -d logs_db < db/schema.sql
 ```
-
-(Service/container names follow your Compose project naming; adjust `postgresdb` if yours differs.)
 
 ### 3. Register the MongoDB sink connector
 
